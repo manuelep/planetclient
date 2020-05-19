@@ -4,7 +4,7 @@ from .import settings
 from ..settings import DB_FOLDER
 
 try:
-    from ..planet.models import db
+    from ..planetstore.models import db
 except ImportError:
     raise
     from py4web import DAL
