@@ -4,6 +4,8 @@ from .models import db
 
 import datetime
 import mercantile
+import re
+from collections import OrderedDict
 
 def fetch_by_id(*ids):
     result = db(db.points.id.belongs(ids)).select()
@@ -42,4 +44,58 @@ def vtile(x, y, z=18, source_name='__GENERIC__'):
         maxlon = bounds.east,
         maxlat = bounds.north,
         source_name = source_name
+    )
+
+def housenumber_components(hn):
+    def loopOlettrs(ll):
+        for l in ll:
+            if l.isdigit():
+                yield l
+            else:
+                break
+    # components = {}
+    number = ''.join(loopOlettrs(hn))
+    letter, color = '', '',
+    if hn.endswith('r'):
+        color = 'r'
+        letters = hn[len(number):-1].strip()
+    elif hn.lower().endswith('rosso'):
+        color = 'r'
+        letters = hn[len(number):-len('rosso')].strip()
+    else:
+        letters = hn[len(number):]
+    if letters:
+        letter = letters
+    return number and int(number), letter, color, hn,
+
+def guess_street(sugg, comune, source=None, limit=10):
+    """ """
+
+    if source=='disabled': return dict()
+
+    words = filter(lambda e: e, re.split(";|,|\.|\n| |'", sugg))
+    query = (db.housenumbers.housenumber!='') & \
+        db.housenumbers.street.contains(list(words), all=True) & \
+        db.housenumbers.city.contains(comune)
+
+    if not source is None:
+        query &= (db.housenumbers.source_name==source)
+
+    housenumbers = "array_agg(housenumbers.housenumber)"
+
+    res = db(query).select(
+        housenumbers,
+        db.housenumbers.street,
+        db.housenumbers.city,
+        db.housenumbers.street.lower(),
+        groupby = db.housenumbers.street|db.housenumbers.city,
+        orderby = db.housenumbers.street,
+        limitby = (0,min((int(limit), 50,)),)
+    ).group_by_value(db.housenumbers.street)
+
+    return OrderedDict(
+        sorted((k, OrderedDict(map(lambda tt: (tt[-1], {k: tt[i] for i,k in enumerate(['number', 'letter', 'color']) if tt[i]}), sorted(map(housenumber_components, [r[housenumbers] for r in v][0])))),) \
+        # sorted((k, map(housenumber_components, [r[housenumbers] for r in v][0]),) \
+            for k,v in res.items()
+        )
     )
