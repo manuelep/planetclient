@@ -15,7 +15,7 @@ def fetch_points(minlon=None, minlat=None, maxlon=None, maxlat=None, all=True, s
 
     basequery = (db.points.source_name==source_name)
 
-    # Spatial query: "Within bounding nox"
+    # Spatial query: "Within bounding box"
     if not any(map(lambda cc: cc is None, [minlon, minlat, maxlon, maxlat])):
         basequery &= "ST_Within(points.geom, ST_MakeEnvelope({}, {}, {}, {}, 4326))".format(
             minlon, minlat, maxlon, maxlat
@@ -33,7 +33,14 @@ def fetch_points(minlon=None, minlat=None, maxlon=None, maxlat=None, all=True, s
 
     result = db(basequery).select()
 
-    return {"type": "FeatureCollection", "features": list(map(lambda row: row.feature, result))}
+    return {
+        "type": "FeatureCollection",
+        "features": list(map(lambda row: row.feature, result))
+    }
+
+def fetch(minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', **tags):
+    """ Returns a multi geometry type FeatureCollection accordingly to given tags and bbox
+    """
 
 def vtile(x, y, z=18, source_name='__GENERIC__'):
     """ """
