@@ -45,7 +45,7 @@ def fetch_points(minlon=None, minlat=None, maxlon=None, maxlat=None, all=True, s
 def _geomdbset(tab, minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', **tags):
     basequery = (tab.source_name==source_name)
     if not any(map(lambda cc: cc is None, [minlon, minlat, maxlon, maxlat])):
-        basequery &= "ST_Within({}.geom, ST_MakeEnvelope({}, {}, {}, {}, 4326))".format(
+        basequery &= "ST_Intersects({}.geom, ST_MakeEnvelope({}, {}, {}, {}, 4326))".format(
             tab, minlon, minlat, maxlon, maxlat
         )
     if tags:
@@ -54,17 +54,13 @@ def _geomdbset(tab, minlon=None, minlat=None, maxlon=None, maxlat=None, source_n
 
     return db(basequery)
 
-
-# def fetch_points_by_tags_(minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', **tags):
-#     """ """
-#     basequery = (db.points.source_name==source_name)
-
 def fetch(minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', **tags):
     """ Returns a multi geometry type FeatureCollection accordingly to given tags and bbox
     """
 
     def feats():
         yield _geomdbset(db.points, minlon, minlat, maxlon, maxlat, source_name, **tags).select()
+        yield _geomdbset(db.ways, minlon, minlat, maxlon, maxlat, source_name, **tags).select()
         yield _geomdbset(db.polys, minlon, minlat, maxlon, maxlat, source_name, **tags).select()
         yield _geomdbset(db.mpolys, minlon, minlat, maxlon, maxlat, source_name, **tags).select()
 
