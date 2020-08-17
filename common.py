@@ -11,5 +11,6 @@ except ImportError:
     # connect to db
     db = DAL(settings.DB_URI,
         folder=DB_FOLDER, pool_size=settings.DB_POOL_SIZE,
-        lazy_tables=False, migrate=False, fake_migrate=False
+        lazy_tables=False, migrate=False, fake_migrate=False,
+        check_reserved=False
     )

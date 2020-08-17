@@ -9,6 +9,16 @@ from geomet import wkt
 
 from .common import db
 
+def geojsonFeature(id, geometry, properties):
+    if ('type' in properties) and properties['type']=='multipolygon':
+        geometry['type'] = 'MultiPolygon'
+
+    return geojson.Feature(
+        geometry = geometry,
+        properties = properties,
+        id = id
+    )
+
 def raise_error(err):
     raise err
 
@@ -48,7 +58,7 @@ class PlanetTable(Table):
 
         def _props(row):
             properties = dict(
-                row[self._tablename].properties or row[self._tablename].tags or {},
+                row[self._tablename].properties or row[self._tablename].tags,
                 id = row[self._tablename].hashid,
                 # **{"_{}_".format(row[self._tablename].source_name): row[self._tablename].source_id}
             )
@@ -65,7 +75,7 @@ class PlanetTable(Table):
 
         if 'geom' in self.fields and self['geom'].type=='geometry()':
 
-            self.feature = Field.Virtual('feature', lambda row: geojson.Feature(
+            self.feature = Field.Virtual('feature', lambda row: geojsonFeature(
                 geometry = wkt.loads(row[self._tablename].geom),
                 properties = row[self._tablename].feat_properties,
                 id = row[self._tablename].hashid

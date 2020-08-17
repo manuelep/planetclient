@@ -6,6 +6,10 @@ import datetime
 import mercantile
 import re
 from collections import OrderedDict
+from itertools import chain
+
+from psycopg2.errors import InternalError_
+from psycopg2.errors import SyntaxError as PGSyntaxError
 
 def fetch_by_id(*ids):
     result = db(db.points.id.belongs(ids)).select()
@@ -38,19 +42,47 @@ def fetch_points(minlon=None, minlat=None, maxlon=None, maxlat=None, all=True, s
         "features": list(map(lambda row: row.feature, result))
     }
 
+def _geomdbset(tab, minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', **tags):
+    basequery = (tab.source_name==source_name)
+    if not any(map(lambda cc: cc is None, [minlon, minlat, maxlon, maxlat])):
+        basequery &= "ST_Within({}.geom, ST_MakeEnvelope({}, {}, {}, {}, 4326))".format(
+            tab, minlon, minlat, maxlon, maxlat
+        )
+    if tags:
+        basequery &= " AND ".join(["({tab}.tags->>'{key}' = '{value}')".format(key=key, value=value, tab=tab) \
+            for key,value in tags.items()])
+
+    return db(basequery)
+
+
+# def fetch_points_by_tags_(minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', **tags):
+#     """ """
+#     basequery = (db.points.source_name==source_name)
+
 def fetch(minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', **tags):
     """ Returns a multi geometry type FeatureCollection accordingly to given tags and bbox
     """
 
-def vtile(x, y, z=18, source_name='__GENERIC__'):
+    def feats():
+        yield _geomdbset(db.points, minlon, minlat, maxlon, maxlat, source_name, **tags).select()
+        yield _geomdbset(db.polys, minlon, minlat, maxlon, maxlat, source_name, **tags).select()
+        yield _geomdbset(db.mpolys, minlon, minlat, maxlon, maxlat, source_name, **tags).select()
+
+    return {
+        "type": "FeatureCollection",
+        "features": list(map(lambda row: row.feature, chain(*feats())))
+    }
+
+def vtile(x, y, z=18, source_name='__GENERIC__', **tags):
     """ """
     bounds = mercantile.bounds(x, y, z)
-    return fetch_points(
+    return fetch(
         minlon = bounds.west,
         minlat = bounds.south,
         maxlon = bounds.east,
         maxlat = bounds.north,
-        source_name = source_name
+        source_name = source_name,
+        **tags
     )
 
 def housenumber_components(hn):

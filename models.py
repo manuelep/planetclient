@@ -67,6 +67,13 @@ db.define_table("mpolys",
     migrate = False
 )
 
+db.define_table("splitted_polys",
+    *polyssfields(),
+    table_class = PlanetTable,
+    migrate = False,
+    rname = "_splitted_polys"
+)
+
 db.define_table("graph",
     Field("src_id"),
     Field("source_id", readable=False),
