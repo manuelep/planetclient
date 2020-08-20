@@ -10,10 +10,6 @@ from geomet import wkt
 from .common import db
 
 def geojsonFeature(id, geometry, properties):
-    # if ('type' in properties) and properties['type']=='multipolygon':
-    #     geometry['type'] = 'MultiPolygon'
-    #     geometry['coordinates'] = [geometry['coordinates']]
-
     return geojson.Feature(
         geometry = geometry,
         properties = properties,

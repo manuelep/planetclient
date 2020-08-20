@@ -3,6 +3,7 @@
 from .callbacks import vtile as vtile_
 from .callbacks import guess_street as guess_street_
 from .callbacks import fetch as fetch_
+from .callbacks import fetcharound as fetcharound_
 
 from py4web import action, request, abort, redirect, URL, HTTP
 
@@ -27,6 +28,11 @@ def vtile():
 @action.uses(LocalsOnly())
 def fetch():
     return brap(source_name='osm')(fetch_)()
+
+@action('planet/fetcharound', method=['GET', 'POST'])
+@action.uses(LocalsOnly())
+def fetcharound():
+    return brap(source_name='osm')(fetcharound_)()
 
 @action('planet/guess_street/<sugg>', method=['GET'])
 @action.uses(LocalsOnly())
