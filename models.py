@@ -50,12 +50,19 @@ polyssfields = lambda *of: (
     Field("source_name"),
     Field("source_id"),
     Field("geom", "geometry()"),
-    Field("centroid", "geometry()"),
+    # Field("centroid", "geometry()"),
     Field("tags", "json"),
     Field("properties", "json"),
 ) + of
 
 db.define_table("polys",
+    *polyssfields(),
+    Field("centroid", "geometry()"),
+    table_class = PlanetTable,
+    migrate = False
+)
+
+db.define_table("ways",
     *polyssfields(),
     table_class = PlanetTable,
     migrate = False
@@ -63,16 +70,17 @@ db.define_table("polys",
 
 db.define_table("mpolys",
     *polyssfields(),
+    Field("centroid", "geometry()"),
     table_class = PlanetTable,
     migrate = False
 )
 
-db.define_table("splitted_polys",
-    *polyssfields(),
-    table_class = PlanetTable,
-    migrate = False,
-    rname = "_splitted_polys"
-)
+# db.define_table("splitted_polys",
+#     *polyssfields(),
+#     table_class = PlanetTable,
+#     migrate = False,
+#     rname = "_splitted_polys"
+# )
 
 db.define_table("graph",
     Field("src_id"),

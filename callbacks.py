@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 
+from ..common import logger
 from .models import db
+from ..planetstore.populate.tile import tilebbox
 
 import datetime
 import mercantile
 import re
 from collections import OrderedDict
 from itertools import chain
+from functools import reduce
 
 from psycopg2.errors import InternalError_
 from psycopg2.errors import SyntaxError as PGSyntaxError
@@ -42,38 +45,71 @@ def fetch_points(minlon=None, minlat=None, maxlon=None, maxlat=None, all=True, s
         "features": list(map(lambda row: row.feature, result))
     }
 
-def _geomdbset(tab, minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', **tags):
+def _geomdbset(tab, minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', tags=[]):
+    """
+    tab @pydal.table : DB table to query.
+    minlon @float : Bounding box left limit longitude coordinate.
+    minlat @float : Bounding box bottom limit latitude coordinate.
+    maxlon @float : Bounding box right limit longitude coordinate.
+    maxlat @float : Bounding box top limit latitude coordinate.
+    source_name @text : Source name (ex.: osm).
+    tags @list : List of dictionaries of tags to query for (ex.: [{'amenity': 'bar'}, ...]);
+        Geometries resulting from query will must have at least all tags from any dictionary in the list.
+    otags : Tags to query for.
+        Geometries resulting from query will must be tagged as one of the passed tag.
+
+    """
     basequery = (tab.source_name==source_name)
     if not any(map(lambda cc: cc is None, [minlon, minlat, maxlon, maxlat])):
         basequery &= "ST_Within({}.geom, ST_MakeEnvelope({}, {}, {}, {}, 4326))".format(
             tab, minlon, minlat, maxlon, maxlat
         )
-    if tags:
-        basequery &= " AND ".join(["({tab}.tags->>'{key}' = '{value}')".format(key=key, value=value, tab=tab) \
-            for key,value in tags.items()])
 
+    if tags:
+        basequery &= "("+" OR ".join([
+            " AND ".join([
+                "({tab}.tags->>'{key}' = '{value}')".format(key=key, value=value, tab=tab) \
+                    for key,value in tt.items()
+                ]) for tt in tags
+            ])+")"
+
+    # logger.debug(db(basequery)._select())
     return db(basequery)
 
-
-# def fetch_points_by_tags_(minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', **tags):
-#     """ """
-#     basequery = (db.points.source_name==source_name)
-
-def fetch(minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', **tags):
-    """ Returns a multi geometry type FeatureCollection accordingly to given tags and bbox
+def fetch(minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', tags=[]):
+    """ Returns a multi geometry type FeatureCollection accordingly to given tags
+    and bounding box limits.
     """
 
     def feats():
-        yield _geomdbset(db.points, minlon, minlat, maxlon, maxlat, source_name, **tags).select()
-        yield _geomdbset(db.polys, minlon, minlat, maxlon, maxlat, source_name, **tags).select()
-        yield _geomdbset(db.mpolys, minlon, minlat, maxlon, maxlat, source_name, **tags).select()
+        yield _geomdbset(db.points, minlon, minlat, maxlon, maxlat, source_name, tags=tags).select()
+        yield _geomdbset(db.ways, minlon, minlat, maxlon, maxlat, source_name, tags=tags).select()
+        yield _geomdbset(db.polys, minlon, minlat, maxlon, maxlat, source_name, tags=tags).select()
+        yield _geomdbset(db.mpolys, minlon, minlat, maxlon, maxlat, source_name, tags=tags).select()
 
     return {
         "type": "FeatureCollection",
         "features": list(map(lambda row: row.feature, chain(*feats())))
     }
 
-def vtile(x, y, z=18, source_name='__GENERIC__', **tags):
+def fetcharound(lon, lat, dist=200, bdim=None, buffer=0, source_name='__GENERIC__', tags=[]):
+    """ Returns a multi geometry type FeatureCollection accordingly to given tags
+    around a center point.
+    """
+    _extra = {}
+    if not bdim is None: _extra['bdim'] = bdim
+    bbox = tilebbox(dist=dist, lon=lon, lat=lat, buffer=buffer, **_extra)
+    logger.debug(bbox)
+    return fetch(
+        minlon = bbox.minx,
+        minlat = bbox.miny,
+        maxlon = bbox.maxx,
+        maxlat = bbox.maxy,
+        source_name = source_name,
+        tags = tags
+    )
+
+def vtile(x, y, z=18, source_name='__GENERIC__', tags=[]):
     """ """
     bounds = mercantile.bounds(x, y, z)
     return fetch(
@@ -82,7 +118,7 @@ def vtile(x, y, z=18, source_name='__GENERIC__', **tags):
         maxlon = bounds.east,
         maxlat = bounds.north,
         source_name = source_name,
-        **tags
+        tags = tags
     )
 
 def housenumber_components(hn):
