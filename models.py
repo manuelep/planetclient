@@ -57,7 +57,7 @@ polyssfields = lambda *of: (
 
 db.define_table("ways",
     *polyssfields(),
-    Field("centroid", "geometry()"),
+    # Field("centroid", "geometry()"),
     table_class = PlanetTable,
     migrate = False
 )
