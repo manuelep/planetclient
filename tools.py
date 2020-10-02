@@ -44,6 +44,7 @@ class PlanetTable(Table):
 
 
     def _set_hashid(self, fieldname, first, *ofields):
+
         setattr(self, fieldname, Field.Virtual(fieldname,
             lambda row: self._extra['encoder'].encode(
                 row[self._tablename][first],
@@ -66,18 +67,52 @@ class PlanetTable(Table):
 
         setattr(self, 'feat_properties', Field.Virtual('feat_properties', _props))
 
+    def _set_geometry(self):
+
+        if 'geom' in self.fields and self['geom'].type=='geometry()':
+            self.feat_geometry = Field.Virtual('feat_geometry', lambda row: wkt.loads(row[self._tablename].geom))
+
     def _set_feature_co(self):
         self._set_hashid('hashid', 'src_id', 'id')
         self._set_feat_properties()
+        self._set_geometry()
 
         if 'geom' in self.fields and self['geom'].type=='geometry()':
 
             self.feature = Field.Virtual('feature', lambda row: geojsonFeature(
-                geometry = wkt.loads(row[self._tablename].geom),
+                geometry = row[self._tablename].feat_geometry,
                 properties = row[self._tablename].feat_properties,
                 id = row[self._tablename].hashid
             ))
 
+import mercantile as mc
+import h3
+
+def get_tile(lon, lat, zoom, classic=True):
+    if classic is True:
+        return mc.tile(lon, lat, zoom)
+    elif classic is False:
+        return h3.geo_to_h3(lat, lon, resolution=zoom)
+
+# def foo(row, zoom, classic=True):
+#     import pdb; pdb.set_trace()
+
+class PlanetPointTable(PlanetTable):
+    """docstring for PlanetPointTable."""
+
+    def __init__(self, *args, **kwargs):
+        super(PlanetPointTable, self).__init__(*args, **kwargs)
+        self._set_tile()
+
+    def _set_tile(self):
+        self.tile = Field.Method(
+            'tile',
+            lambda row, zoom, classic=True: get_tile(
+                *wkt.loads(row[self._tablename].geom)["coordinates"],
+                zoom = zoom,
+                classic = classic
+            )
+        )
 
 class PlanetGraphTable(PlanetTable):
     """docstring for PlanetGraphTable."""

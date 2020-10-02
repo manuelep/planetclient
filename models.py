@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from ..common import T
-from .tools import PlanetTable, PlanetGraphTable
+from .tools import PlanetTable, PlanetPointTable, PlanetGraphTable
 from .common import db
 from py4web import Field
 from itertools import chain
@@ -41,7 +41,7 @@ db.define_table("points",
     Field("properties", "json"),
     Field("crds", "json"),
     singular = T("point"), plural = T("points"),
-    table_class = PlanetTable,
+    table_class = PlanetPointTable,
     migrate = False
 )
 

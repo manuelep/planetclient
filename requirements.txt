@@ -1,3 +1,5 @@
 geomet
 geojson
 hashids
+mercantile
+h3
