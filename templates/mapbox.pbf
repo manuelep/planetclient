@@ -1,0 +1,1 @@
+[[import mapbox_vector_tile;from py4web import response as rsp]][[#import pdb; pdb.set_trace()]][[rsp.headers["Content-Type"]="application/x-protobuf"]][[=rsp.write(mapbox_vector_tile.encode(__vars__).__str__)]]

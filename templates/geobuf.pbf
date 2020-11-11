@@ -1,0 +1,4 @@
+[[import geobuf]]
+[[from py4web import response as rsp]]
+[[rsp.headers["Content-Type"] = "application/x-protobuf"]]
+[[=geobuf.encode(__vars__)]]
