@@ -1,4 +1,1 @@
-[[from ujson import dumps]]
-[[from py4web import response as rsp]]
-[[rsp.headers["Content-Type"] = "application/json"]]
-[[=XML(dumps(__vars__))]]
+[[from ujson import dumps]][[from py4web import response as rsp]][[rsp.headers["Content-Type"] = "application/json"]][[=XML(dumps(__vars__))]]

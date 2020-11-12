@@ -3,6 +3,8 @@
 from .import settings
 from ..settings import DB_FOLDER
 
+from ..planetstore.common import logger
+
 try:
     from ..planetstore.models import db
 except ImportError:

@@ -6,6 +6,8 @@ from hashids import Hashids
 from pydal.objects import Table
 from py4web import Field
 from geomet import wkt
+import mercantile as mc
+import h3
 
 from .common import db
 
@@ -84,9 +86,6 @@ class PlanetTable(Table):
                 properties = row[self._tablename].feat_properties,
                 id = row[self._tablename].hashid
             ))
-
-import mercantile as mc
-import h3
 
 def get_tile(lon, lat, zoom, classic=True):
     if classic is True:

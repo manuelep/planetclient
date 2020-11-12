@@ -14,6 +14,9 @@ from functools import reduce
 from psycopg2.errors import InternalError_
 from psycopg2.errors import SyntaxError as PGSyntaxError
 
+from .pbftools import geom2tile
+import h3
+
 def fetch_by_id(*ids):
     result = db(db.points.id.belongs(ids)).select()
     return {"type": "FeatureCollection", "features": list(map(lambda row: row.feature, result))}
@@ -44,6 +47,39 @@ def fetch_points(minlon=None, minlat=None, maxlon=None, maxlat=None, all=True, s
         "type": "FeatureCollection",
         "features": list(map(lambda row: row.feature, result))
     }
+
+def _get_buffered_bounds(minlon, minlat, maxlon, maxlat, zoom=18, classic=True):
+    """
+    minlon, minlat, maxlon, maxlat @float : Bbox limits;
+    zoon @integer : Square tile zoom level or hexagonal tile resolution;
+    classic @boolean : Whether to use classic square tiles or Uber H3 hexagonal ones.
+
+    Returns the bbox limits that fits to the tiles touched by the bbox area introduced.
+    In this way you are sure to fetch all the inolved points.
+    """
+
+    if classic:
+        resolution = zoom
+        ultile = mt.tile(minlon, maxlat, zoom)
+        left, top = mt.ul(*ultile)
+        rbtile = mt.tile(maxlon, minlat, zoom)
+        brtile = lambda x, y, z: (x+1, y+1, z)
+        right, bottom = mt.ul(*brtile(*rbtile))
+        # get_tile = lambda lon, lat: mt.tile(lon, lat, zoom)
+    else:
+        # ultile = h3.geo_to_h3(maxlat, minlon, zoom)
+        resolution = min(12, zoom)
+
+        ultile = h3.geo_to_h3(maxlat, minlon, resolution)
+        ulboundary = h3.h3_to_geo_boundary(ultile)
+
+        rbtile = h3.geo_to_h3(minlat, maxlon, resolution)
+        rbboundary = h3.h3_to_geo_boundary(rbtile)
+        lats, lons = zip(*chain(ulboundary, rbboundary))
+        left, right = min(lons), max(lons)
+        top, bottom = max(lats), min(lats)
+
+    return left, bottom, right, top, resolution,
 
 def _geomdbset(tab, minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', tags=[]):
     """
@@ -76,7 +112,7 @@ def _geomdbset(tab, minlon=None, minlat=None, maxlon=None, maxlat=None, source_n
     # logger.debug(db(basequery)._select())
     return db(basequery)
 
-def fetch(minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', tags=[]):
+def fetch_(minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', tags=[]):
     """ Returns a multi geometry type FeatureCollection accordingly to given tags
     and bounding box limits.
     """
@@ -87,9 +123,12 @@ def fetch(minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GEN
         yield _geomdbset(db.polys, minlon, minlat, maxlon, maxlat, source_name, tags=tags).select()
         yield _geomdbset(db.mpolys, minlon, minlat, maxlon, maxlat, source_name, tags=tags).select()
 
+    return map(lambda row: row.feature, chain(*feats()))
+
+def fetch(minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', tags=[]):
     return {
         "type": "FeatureCollection",
-        "features": list(map(lambda row: row.feature, chain(*feats())))
+        "features": list(fetch_(**vars()))
     }
 
 def fetcharound(lon, lat, dist=200, bdim=None, buffer=0, source_name='__GENERIC__', tags=[]):
@@ -112,13 +151,24 @@ def fetcharound(lon, lat, dist=200, bdim=None, buffer=0, source_name='__GENERIC_
 def vtile(x, y, z=18, source_name='__GENERIC__', tags=[]):
     """ """
     bounds = mercantile.bounds(x, y, z)
-    return fetch(
+    feats_ = fetch_(
         minlon = bounds.west,
         minlat = bounds.south,
         maxlon = bounds.east,
         maxlat = bounds.north,
         source_name = source_name,
         tags = tags
+    )
+    return dict(
+        name = 'mytiles',
+        # extent = 4096,
+        # version = 2,
+        features = [dict(
+            id = feat["id"],
+            type = 3,
+            geometry = geom2tile(x, y, z, feat["geometry"]),
+            properties = {}# feat["properties"]
+        ) for feat in feats_]
     )
 
 def housenumber_components(hn):

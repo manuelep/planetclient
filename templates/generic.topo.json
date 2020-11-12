@@ -1,0 +1,1 @@
+[[from ujson import dumps]][[from pytopojson import topology]][[from py4web import response as rsp]][[rsp.headers["Content-Type"] = "application/geo+json"]][[topology = topology.Topology()]][[=XML(dumps(topology(__vars__)))]]
