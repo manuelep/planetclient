@@ -16,6 +16,7 @@ from psycopg2.errors import SyntaxError as PGSyntaxError
 
 from .pbftools import geom2tile
 import h3
+import mercantile as mt
 
 def fetch_by_id(*ids):
     result = db(db.points.id.belongs(ids)).select()
@@ -81,7 +82,7 @@ def _get_buffered_bounds(minlon, minlat, maxlon, maxlat, zoom=18, classic=True):
 
     return left, bottom, right, top, resolution,
 
-def _geomdbset(tab, minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', tags=[]):
+def _geomdbset(tab, minlon=None, minlat=None, maxlon=None, maxlat=None, source_name='__GENERIC__', tags=[], geom='geom'):
     """
     tab @pydal.table : DB table to query.
     minlon @float : Bounding box left limit longitude coordinate.
@@ -97,14 +98,12 @@ def _geomdbset(tab, minlon=None, minlat=None, maxlon=None, maxlat=None, source_n
     """
     basequery = (tab.source_name==source_name)
     if not any(map(lambda cc: cc is None, [minlon, minlat, maxlon, maxlat])):
-        basequery &= "ST_Intersects({}.geom, ST_MakeEnvelope({}, {}, {}, {}, 4326))".format(
-            tab, minlon, minlat, maxlon, maxlat
-        )
+        basequery &= f"ST_Intersects({tab}.{geom}, ST_MakeEnvelope({minlon}, {minlat}, {maxlon}, {maxlat}, 4326))"
 
     if tags:
         basequery &= "("+" OR ".join([
             " AND ".join([
-                "({tab}.tags->>'{key}' = '{value}')".format(key=key, value=value, tab=tab) \
+                f"({tab}.tags->>'{key}' = '{value}')" # .format(key=key, value=value, tab=tab) \
                     for key,value in tt.items()
                 ]) for tt in tags
             ])+")"
