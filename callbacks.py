@@ -16,6 +16,7 @@ from psycopg2.errors import SyntaxError as PGSyntaxError
 
 from .pbftools import geom2tile
 import h3
+import mercantile as mt
 
 def fetch_by_id(*ids):
     result = db(db.points.id.belongs(ids)).select()
