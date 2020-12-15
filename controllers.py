@@ -8,13 +8,15 @@ from .callbacks import fetch as fetch_
 from .callbacks import fetcharound as fetcharound_
 
 from .pbftools import as_pbf
+# from .protobuf import Protobuf
 
+from geopbf import Protobuf
 
 from kilimanjaro.frameworks.py4web.controller import brap, LocalsOnly
 
 @action('planet/vtile/<xtile:int>/<ytile:int>/<zoom:int>', method=['GET'])
 @action.uses(LocalsOnly())
-@action.uses(as_pbf())
+@action.uses(Protobuf())
 def vtile_xyz(xtile, ytile, zoom):
     return brap(x=xtile, y=ytile, z=zoom, source_name='osm')(vtile_)()
 

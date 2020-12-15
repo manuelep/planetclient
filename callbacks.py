@@ -4,6 +4,7 @@ from ..common import logger
 from .models import db
 from ..planetstore.populate.tile import tilebbox
 
+import os
 import datetime
 import mercantile
 import re
@@ -17,6 +18,16 @@ from psycopg2.errors import SyntaxError as PGSyntaxError
 from .pbftools import geom2tile
 import h3
 import mercantile as mt
+
+from .. import settings
+from geopbf import settings as gpbfsettings
+gpbfsettings.DB_URI = "postgres://postgres:postgres@localhost/vtile_cache"
+gpbfsettings.DB_POOL_SIZE = 20
+gpbfsettings.DB_FOLDER = settings.DB_FOLDER
+gpbfsettings.UPLOAD_FOLDER = settings.UPLOAD_FOLDER
+gpbfsettings.STATIC_UPLOAD_FOLDER = os.path.join(settings.APP_FOLDER, "static", "uploads")
+
+from geopbf.pbfpp import prototizepp as prototize
 
 def fetch_by_id(*ids):
     result = db(db.points.id.belongs(ids)).select()
@@ -147,6 +158,7 @@ def fetcharound(lon, lat, dist=200, bdim=None, buffer=0, source_name='__GENERIC_
         tags = tags
     )
 
+@prototize
 def vtile(x, y, z=18, source_name='__GENERIC__', tags=[]):
     """ """
     bounds = mercantile.bounds(x, y, z)
@@ -158,17 +170,7 @@ def vtile(x, y, z=18, source_name='__GENERIC__', tags=[]):
         source_name = source_name,
         tags = tags
     )
-    return dict(
-        name = 'mytiles',
-        # extent = 4096,
-        # version = 2,
-        features = [dict(
-            id = feat["id"],
-            type = 3,
-            geometry = geom2tile(x, y, z, feat["geometry"]),
-            properties = {}# feat["properties"]
-        ) for feat in feats_]
-    )
+    return dict(features=feats_)
 
 def housenumber_components(hn):
     def loopOlettrs(ll):
@@ -223,3 +225,6 @@ def guess_street(sugg, comune, source=None, limit=10):
             for k,v in res.items()
         )
     )
+
+if __name__=='__main__':
+    print(vtile(551172, 379865, 20, source_name='osm', tags=[{'building': 'yes'}]))
