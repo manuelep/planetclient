@@ -10,15 +10,20 @@ from .callbacks import fetcharound as fetcharound_
 from .pbftools import as_pbf
 # from .protobuf import Protobuf
 
-from geopbf import Protobuf
+# from geopbf import Protobuf
+# from geopbf.pbfpp import Prototizerpp as Prototizer
+from geopbf import Prototizer
 
 from kilimanjaro.frameworks.py4web.controller import brap, LocalsOnly
 
+mybrap = Prototizer()
+
 @action('planet/vtile/<xtile:int>/<ytile:int>/<zoom:int>', method=['GET'])
 @action.uses(LocalsOnly())
-@action.uses(Protobuf())
+@action.uses(mybrap)
 def vtile_xyz(xtile, ytile, zoom):
-    return brap(x=xtile, y=ytile, z=zoom, source_name='osm')(vtile_)()
+    mybrap.update(dict(x=xtile, y=ytile, z=zoom, source_name='osm'))
+    return mybrap(vtile_)()
 
 @action('planet/vtile/<xtile:int>/<ytile:int>', method=['GET','POST'])
 @action.uses(LocalsOnly())

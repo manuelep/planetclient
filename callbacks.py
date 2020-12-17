@@ -27,7 +27,10 @@ gpbfsettings.DB_FOLDER = settings.DB_FOLDER
 gpbfsettings.UPLOAD_FOLDER = settings.UPLOAD_FOLDER
 gpbfsettings.STATIC_UPLOAD_FOLDER = os.path.join(settings.APP_FOLDER, "static", "uploads")
 
-from geopbf.pbfpp import prototizepp as prototize
+# from geopbf.pbfpp import prototizepp as prototize
+from geopbf.pbfpp import Prototizerpp as Prototizer
+
+prototizer = Prototizer()
 
 def fetch_by_id(*ids):
     result = db(db.points.id.belongs(ids)).select()
@@ -158,7 +161,6 @@ def fetcharound(lon, lat, dist=200, bdim=None, buffer=0, source_name='__GENERIC_
         tags = tags
     )
 
-@prototize
 def vtile(x, y, z=18, source_name='__GENERIC__', tags=[]):
     """ """
     bounds = mercantile.bounds(x, y, z)
