@@ -5,3 +5,4 @@ mercantile
 h3
 mapbox_vector_tile
 -e git+https://github.com/manuelep/kilimanjaro.git#egg=kilimanjaro
+-e git+https://github.com/manuelep/GeoPbf.git#egg=geopbf
