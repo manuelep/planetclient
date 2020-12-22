@@ -19,18 +19,20 @@ from .pbftools import geom2tile
 import h3
 import mercantile as mt
 
-from .. import settings
-from geopbf import settings as gpbfsettings
-gpbfsettings.DB_URI = "postgres://postgres:postgres@localhost/vtile_cache"
-gpbfsettings.DB_POOL_SIZE = 20
-gpbfsettings.DB_FOLDER = settings.DB_FOLDER
-gpbfsettings.UPLOAD_FOLDER = settings.UPLOAD_FOLDER
-gpbfsettings.STATIC_UPLOAD_FOLDER = os.path.join(settings.APP_FOLDER, "static", "uploads")
+from shapely.geometry import Point
+from shapely.ops import transform
+from shapely.affinity import translate
+from pyproj import Transformer, Proj
+to3857 = Proj('epsg:3857')
+transformer = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
+# from .. import settings
+# from geopbf import settings as gpbfsettings
+# gpbfsettings.DB_URI = "postgres://postgres:postgres@localhost/vtile_cache"
+# gpbfsettings.DB_POOL_SIZE = 20
+# gpbfsettings.DB_FOLDER = settings.DB_FOLDER
+# gpbfsettings.UPLOAD_FOLDER = settings.UPLOAD_FOLDER
+# gpbfsettings.STATIC_UPLOAD_FOLDER = os.path.join(settings.APP_FOLDER, "static", "uploads")
 
-# from geopbf.pbfpp import prototizepp as prototize
-from geopbf.pbfpp import Prototizerpp as Prototizer
-
-prototizer = Prototizer()
 
 def fetch_by_id(*ids):
     result = db(db.points.id.belongs(ids)).select()
@@ -73,8 +75,9 @@ def _get_buffered_bounds(minlon, minlat, maxlon, maxlat, zoom=18, classic=True):
     In this way you are sure to fetch all the inolved points.
     """
 
+    resolution = zoom
     if classic:
-        resolution = zoom
+        # resolution = zoom
         ultile = mt.tile(minlon, maxlat, zoom)
         left, top = mt.ul(*ultile)
         rbtile = mt.tile(maxlon, minlat, zoom)
@@ -83,16 +86,44 @@ def _get_buffered_bounds(minlon, minlat, maxlon, maxlat, zoom=18, classic=True):
         # get_tile = lambda lon, lat: mt.tile(lon, lat, zoom)
     else:
         # ultile = h3.geo_to_h3(maxlat, minlon, zoom)
-        resolution = min(12, zoom)
+        # resolution = min(12, zoom)
 
         ultile = h3.geo_to_h3(maxlat, minlon, resolution)
         ulboundary = h3.h3_to_geo_boundary(ultile)
 
-        rbtile = h3.geo_to_h3(minlat, maxlon, resolution)
-        rbboundary = h3.h3_to_geo_boundary(rbtile)
-        lats, lons = zip(*chain(ulboundary, rbboundary))
-        left, right = min(lons), max(lons)
-        top, bottom = max(lats), min(lats)
+        P1 = Point(ulboundary[0][::-1])
+        P3 = Point(ulboundary[3][::-1])
+
+        P1_3857 = transform(transformer.transform, P1)
+        P3_3857 = transform(transformer.transform, P3)
+
+        buffer = P1_3857.distance(P3_3857)
+
+        ul_3857_ = transform(transformer.transform, Point((minlon, maxlat,)))
+
+        ul_3857 = translate(ul_3857_, -buffer, buffer)
+
+        br_3857_ = transform(transformer.transform, Point((maxlon, minlat,)))
+
+        br_3857 = translate(br_3857_, buffer, -buffer)
+
+        left, top = to3857(*ul_3857.coords[0], inverse=True)
+        right, bottom = to3857(*br_3857.coords[0], inverse=True)
+
+        # import pdb; pdb.set_trace()
+        #
+        # bltile = h3.geo_to_h3(minlat, minlon, resolution)
+        # blboundary = h3.h3_to_geo_boundary(bltile)
+        #
+        # brtile = h3.geo_to_h3(minlat, maxlon, resolution)
+        # brboundary = h3.h3_to_geo_boundary(brtile)
+        #
+        # urtile = h3.geo_to_h3(maxlat, maxlon, resolution)
+        # urboundary = h3.h3_to_geo_boundary(urtile)
+        #
+        # lats, lons = zip(*chain(ulboundary, brboundary, blboundary, urboundary))
+        # left, right = min(lons), max(lons)
+        # top, bottom = max(lats), min(lats)
 
     return left, bottom, right, top, resolution,
 

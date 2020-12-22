@@ -7,47 +7,46 @@ from .callbacks import guess_street as guess_street_
 from .callbacks import fetch as fetch_
 from .callbacks import fetcharound as fetcharound_
 
-from .pbftools import as_pbf
+# from .pbftools import as_pbf
 # from .protobuf import Protobuf
 
 # from geopbf import Protobuf
 # from geopbf.pbfpp import Prototizerpp as Prototizer
-from geopbf import Prototizer
+# from geopbf import Prototizer
 
-from kilimanjaro.frameworks.py4web.controller import brap, LocalsOnly
+from kilimanjaro.frameworks.py4web.controller import LocalsOnly
 
-mybrap = Prototizer()
+from .common import webWrapper, pbfWebWrapper
 
 @action('planet/vtile/<xtile:int>/<ytile:int>/<zoom:int>', method=['GET'])
 @action.uses(LocalsOnly())
-@action.uses(mybrap)
+@action.uses(pbfWebWrapper)
 def vtile_xyz(xtile, ytile, zoom):
-    mybrap.update(dict(x=xtile, y=ytile, z=zoom, source_name='osm'))
-    return mybrap(vtile_)()
+    return pbfWebWrapper(vtile_, x=xtile, y=ytile, z=zoom, source_name='osm')()
 
 @action('planet/vtile/<xtile:int>/<ytile:int>', method=['GET','POST'])
 @action.uses(LocalsOnly())
-@action.uses(as_pbf())
+@action.uses(pbfWebWrapper)
 def vtile_xy(xtile, ytile):
-    return brap(x=xtile, y=ytile, source_name='osm')(vtile_)()
+    return pbfWebWrapper(vtile_, x=xtile, y=ytile, source_name='osm')()
 
 @action('planet/vtile', method=['GET','POST'])
 @action.uses(LocalsOnly())
-@action.uses(as_pbf())
+@action.uses(pbfWebWrapper)
 def vtile():
-    return brap(source_name='osm')(vtile_)()
+    return pbfWebWrapper(vtile_, source_name='osm')()
 
 @action('planet/fetch', method=['GET', 'POST'])
 @action.uses(LocalsOnly())
 def fetch():
-    return brap(source_name='osm')(fetch_)()
+    return webWrapper(fetch_, source_name='osm')()
 
 @action('planet/fetcharound', method=['GET', 'POST'])
 @action.uses(LocalsOnly())
 def fetcharound():
-    return brap(source_name='osm')(fetcharound_)()
+    return webWrapper(fetcharound_, source_name='osm')()
 
 @action('planet/guess_street/<sugg>', method=['GET'])
 @action.uses(LocalsOnly())
 def guess_street(sugg):
-    return brap(sugg=sugg, comune='Genova', source='osm')(guess_street_)()
+    return webWrapper(guess_street_, sugg=sugg, comune='Genova', source='osm')()
