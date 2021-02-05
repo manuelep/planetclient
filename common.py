@@ -16,6 +16,11 @@ except ImportError:
         check_reserved=False
     )
 
+from geopbf import settings as gpbfsettings
+if hasattr(gpbfsettings, "SHARE_DB") and gpbfsettings.SHARE_DB:
+    from geopbf.pbfpp import common as pbfcommon
+    pbfcommon.db = db
+
 from geopbf.pbfpp import Prototizerpp as PbfPrototizer
 from kilimanjaro.frameworks.py4web.controller import WebWrapper
 

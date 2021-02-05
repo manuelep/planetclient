@@ -15,7 +15,6 @@ from functools import reduce
 from psycopg2.errors import InternalError_
 from psycopg2.errors import SyntaxError as PGSyntaxError
 
-from .pbftools import geom2tile
 import h3
 import mercantile as mt
 
